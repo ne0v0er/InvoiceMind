@@ -2,12 +2,15 @@ import json
 import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 import google.generativeai as genai
+from dotenv import load_dotenv
+
 from src.models import Invoice
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+
 GEMINI_API_KEY = os.environ["GEMINI_API_KEY"]
+MODEL = "gemini-2.0-flash"
 
 SYSTEM_PROMPT = (
     "Tu es un expert-comptable spécialisé dans les factures françaises. "
@@ -25,18 +28,16 @@ SYSTEM_PROMPT = (
     "Si un champ est introuvable, utilise \"\" pour les strings et 0 pour les numbers."
 )
 
-genai.configure(api_key=GEMINI_API_KEY)
-_model = genai.GenerativeModel("gemini-2.0-flash")
-
 
 def extract_invoice_data(text: str, source_file: str) -> Invoice:
-    response = _model.generate_content(
-        [SYSTEM_PROMPT, f"Texte de la facture :\n\n{text}"],
-        generation_config=genai.GenerationConfig(
-            response_mime_type="application/json"
-        ),
+    genai.configure(api_key=GEMINI_API_KEY)
+
+    model = genai.GenerativeModel(
+        model_name=MODEL,
+        generation_config={"response_mime_type": "application/json"},
     )
 
+    response = model.generate_content(f"{SYSTEM_PROMPT}\n\nTexte de la facture :\n\n{text}")
     data: dict = json.loads(response.text)
 
     return Invoice(
